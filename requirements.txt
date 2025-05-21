@@ -1,0 +1,8 @@
+
+---
+
+## 📄 `requirements.txt`
+
+```text
+numpy
+networkx
