@@ -1,58 +1,77 @@
+import math
 import random
+from typing import List, Tuple
 import uuid
-from collections import defaultdict
-from phi import generate_structure_params, phi, delta
 
-class DAGNode:
-    def __init__(self, x, phi_x, delta_x, zk_passed, references):
+# === Structure Function ===
+def generate_structure_params(seed: str, k: int = 10) -> Tuple[List[float], List[float], List[float]]:
+    random.seed(seed)
+    A = [random.uniform(0.5, 1.5) for _ in range(k)]
+    t = [random.uniform(1.0, 5.0) for _ in range(k)]
+    theta = [random.uniform(0, 2 * math.pi) for _ in range(k)]
+    return A, t, theta
+
+def phi(x: float, A: List[float], t: List[float], theta: List[float]) -> float:
+    if x + 1 <= 0:
+        raise ValueError("x + 1 must be positive for log operation")
+    if not (len(A) == len(t) == len(theta)):
+        raise ValueError("A, t, and theta must have the same length")
+    return sum(Ai * math.cos(ti * math.log(x + 1) + thetai)
+               for Ai, ti, thetai in zip(A, t, theta))
+
+def delta(phi_x: float, tau: float) -> float:
+    return abs(phi_x - tau)
+
+# === Structure Signature ===
+class StructureSignature:
+    def __init__(self, x: float, phi_x: float, delta_x: float, zk_passed: bool, entropy: float, references: List[str]):
         self.id = str(uuid.uuid4())
         self.x = x
         self.phi_x = phi_x
         self.delta_x = delta_x
         self.zk_passed = zk_passed
+        self.entropy = entropy
         self.references = references
-        self.weight = 0
-        self.entropy = 0
 
-class DAG:
-    def __init__(self):
-        self.nodes = {}
-        self.edges = defaultdict(list)
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "x": self.x,
+            "phi_x": self.phi_x,
+            "delta_x": self.delta_x,
+            "zk": self.zk_passed,
+            "entropy": self.entropy,
+            "refs": self.references
+        }
 
-    def add_node(self, node: DAGNode):
-        self.nodes[node.id] = node
-        for ref in node.references:
-            self.edges[ref].append(node.id)
-
-def simulate_zkp(delta_val: float, epsilon: float) -> bool:
-    return delta_val < epsilon
-
-def compute_weight(node, alpha=1.0, beta=1.0, gamma=1.0):
-    reference_count = len(node.references)
-    residual_term = 1.0 - (node.delta_x / 0.1)
-    entropy_term = node.entropy
-    node.weight = alpha * reference_count + beta * residual_term + gamma * entropy_term
-    return node.weight
-
-# ====== Run Simulation ======
-if __name__ == "__main__":
-    seed = "node_01"
-    k = 10
-    A, t, theta = generate_structure_params(seed, k)
-    dag = DAG()
-
-    tau = 0.5
-    epsilon = 0.1
-
-    for i in range(20):
-        x = i + 1
+# === Example Structure Signature Path ===
+def generate_signature_path(seed: str, count: int, tau: float = 0.5, epsilon: float = 0.1) -> List[StructureSignature]:
+    A, t, theta = generate_structure_params(seed, k=10)
+    path = []
+    prev_refs = []
+    for i in range(1, count + 1):
+        x = i
         phi_x = phi(x, A, t, theta)
         delta_x = delta(phi_x, tau)
-        zk = simulate_zkp(delta_x, epsilon)
-        references = list(dag.nodes.keys())[-3:]
-        node = DAGNode(x, phi_x, delta_x, zk, references)
-        node.entropy = random.uniform(0.5, 2.0)
-        compute_weight(node)
-        dag.add_node(node)
+        zk = delta_x < epsilon
+        entropy = 1.0 + 0.05 * i  # Increasing entropy
+        sig = StructureSignature(x, phi_x, delta_x, zk, entropy, prev_refs.copy())
+        path.append(sig)
+        prev_refs = [sig.id]  # Reference last node
+    return path
 
-    print(f"DAG size: {len(dag.nodes)} nodes")
+# === Simulate Output ===
+if __name__ == "__main__":
+    print("\n--- Structure Signature Path Output (φ, δ, zk, entropy) ---")
+    path = generate_signature_path("demo-seed", 5)
+    for sig in path:
+        print(sig.to_dict())
+
+    print("\n--- Raw φ(x) and δ(x) Values ---")
+    A, t, theta = generate_structure_params("demo-seed", 10)
+    tau = 0.5
+    for x in range(1, 6):
+        phi_val = phi(x, A, t, theta)
+        delta_val = delta(phi_val, tau)
+        print(f"x={x}, φ(x)={phi_val:.6f}, δ(x)={delta_val:.6f}")
+
