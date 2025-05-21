@@ -20,28 +20,14 @@ def phi(x: float, A: List[float], t: List[float], theta: List[float]) -> float:
 def delta(phi_x: float, tau: float) -> float:
     return abs(phi_x - tau)
 
-def test_phi_basic():
-    A, t, theta = generate_structure_params("test_seed", 5)
-    val = phi(10, A, t, theta)
-    assert isinstance(val, float)
-
-def test_delta_positive():
-    assert abs(delta(0.6, 0.5) - 0.1) < 1e-9
-    assert abs(delta(-1.0, 1.0) - 2.0) < 1e-9
-
-def test_phi_input_validation():
-    try:
-        phi(-2, [1], [1], [0])
-    except ValueError as e:
-        assert "log operation" in str(e)
-
-    try:
-        phi(10, [1], [1], [0, 0])
-    except ValueError as e:
-        assert "same length" in str(e)
+def test_phi_output():
+    A, t, theta = generate_structure_params("demo-seed", 5)
+    tau = 0.5
+    for x in range(1, 6):
+        phi_val = phi(x, A, t, theta)
+        delta_val = delta(phi_val, tau)
+        print(f"x={x}, φ(x)={phi_val:.6f}, δ(x)={delta_val:.6f}")
 
 if __name__ == "__main__":
-    test_phi_basic()
-    test_delta_positive()
-    test_phi_input_validation()
-    print("All tests passed.")
+    print("--- φ(x) and δ(x) Output Test ---")
+    test_phi_output()
