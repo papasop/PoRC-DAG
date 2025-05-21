@@ -1,8 +1,6 @@
-
----
-
-## 📄 `requirements.txt`
-
-```text
-numpy
-networkx
+# Currently only standard library used
+# Optional for future:
+# numpy
+# networkx
+# matplotlib
+# flask
